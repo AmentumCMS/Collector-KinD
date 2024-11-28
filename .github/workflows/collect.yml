@@ -1,4 +1,4 @@
-name: COLLECTOR IB Collector
+name: KinD Collector
 run-name: ${{ github.actor }} is Collecting 🚀
 on:
   push:

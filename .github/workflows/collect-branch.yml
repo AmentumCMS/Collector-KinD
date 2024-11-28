@@ -1,4 +1,4 @@
-name: COLLECTOR IB Collector (Branch)
+name: KinD Collector (Branch)
 run-name: ${{ github.actor }} is Collecting a Branch! 🚀
 on:
   push:
