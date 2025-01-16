@@ -17,8 +17,10 @@ jobs:
       - name: Get current date
         id: DATE
         run: |
+          echo "Setting Date"
           echo "DATE=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
-          echo -e "\n$GITHUB_OUTPUT\n"
+          echo -e "\nWrote to file:\n$GITHUB_OUTPUT\n"
+          echo "Values:"
           cat $GITHUB_OUTPUT
 
   Skopeo:
@@ -35,12 +37,16 @@ jobs:
 
       - name: DSO Login
         run: |
-          skopeo login registry1.dso.mil -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_TOKEN }}
+          skopeo login registry1.dso.mil \
+            -u ${{ secrets.REGISTRY_USER }} \
+            -p ${{ secrets.REGISTRY_TOKEN }}
 
       - name: Run Skopeo Sync
         run: |
           skopeo sync \
-              --src yaml --dest dir ${{ vars.COLLECTOR }}.yml ${{ vars.COLLECTOR }}
+            --src yaml --dest dir \
+            ${{ vars.COLLECTOR }}.yml \
+            ${{ vars.COLLECTOR }}
 
       - name: Directory Contents
         run: |
@@ -54,7 +60,7 @@ jobs:
           tar -cv -Ipigz --remove-files \
             -f ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz ${{ vars.COLLECTOR }} \
           | tee ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz.txt
-      
+
       - name: Generate Hash
         run: |
           sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz | tee \
@@ -100,7 +106,7 @@ jobs:
       - name: Bundle Repo1 code base for ${{ vars.COLLECTOR }}
         run: |
           git bundle create --progress ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle --all
-          echo -e "\nDirectory Listing $(ls -Alht *)
+          echo -e "\nDirectory Listing $(ls -Alht *)"
 
       - name: Generate Hash
         run: |
@@ -122,11 +128,11 @@ jobs:
   MakeISO:
     runs-on: ubuntu-latest
     needs: [Date, Code, Skopeo]
+    env:
+      GH_TOKEN: ${{ github.token }}
     permissions:
       contents: write
       pull-requests: read
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -141,10 +147,10 @@ jobs:
         with:
           merge-multiple: true
 
-      - name: Download KinD CLI Binaries
+      - name: Download Binaries
         run: |
           export REPO="kubernetes-sigs/kind"
-          export DEST="ISO/binaries"
+          export DEST="binaries"
           echo -e "\nWorking with github repo $REPO"
           echo -e "Listing releases"
           gh release list -R $REPO
@@ -153,10 +159,14 @@ jobs:
           echo -e "\nDownloading Latest to $DEST"
           gh release download -p "*" -D $DEST -R $REPO
           echo -e "\nDownloaded to $DEST"
+          echo -e "\Calculating Hashes"
+          cd $DEST
+          sha256sum * | tee binaries.sha
+          echo -e "\nFiles in $DEST"
           ls -Alht $DEST
 
       - name: Show Artifacts
-        run: ls -Alh ${{ vars.COLLECTOR }}-*.*
+        run: ls -Alh *
 
       - name: Generate Artifact Hash File
         run: |
@@ -175,7 +185,7 @@ jobs:
             -V '${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}' \
             -A '${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}' \
             -o ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso \
-            ${{ vars.COLLECTOR }}-*.* *.md
+            ${{ vars.COLLECTOR }}-*.* *.md binaries
 
       - name: Implant MD5 sum into iso
         run: implantisomd5 ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso
@@ -242,8 +252,8 @@ jobs:
           tag_name: ${{ needs.Date.outputs.Date }}
           make_latest: true
           files: |
-            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle
-            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz
+            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle*
+            ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz*
             ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso*
 
   Sharepoint:
