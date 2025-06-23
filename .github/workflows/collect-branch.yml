@@ -8,7 +8,7 @@ on:
 
 jobs:
   Date:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       Date: ${{ steps.date.outputs.date }}
     steps:
@@ -23,7 +23,7 @@ jobs:
 
   Skopeo:
     needs: [Date]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -72,6 +72,7 @@ jobs:
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz
+          if-no-files-found: error
 
       - name: Upload TARchive SHA
         uses: actions/upload-artifact@v4
@@ -87,7 +88,7 @@ jobs:
 
   Code:
     needs: [Date]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -116,15 +117,17 @@ jobs:
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle
           path: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle
+          if-no-files-found: error 
 
       - name: Upload bundle sha
         uses: actions/upload-artifact@v4
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle.sha
           path: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.bundle.sha
+          if-no-files-found: error 
 
   MakeISO:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [Date, Code, Skopeo]
     env:
       GH_TOKEN: ${{ github.token }}
@@ -145,26 +148,24 @@ jobs:
         with:
           merge-multiple: true
 
-      - name: Download Binaries
+      - name: Download latest Binaries
         run: |
           export REPO="kubernetes-sigs/kind"
           export DEST="binaries"
           echo -e "\nWorking with github repo $REPO"
           echo -e "Listing releases"
           gh release list -R $REPO
-          echo -e "\nDownloading binaries"
+          echo -e "\nDownloading Latest binaries to $DEST"
           mkdir -p $DEST
-          echo -e "\nDownloading Latest to $DEST"
           gh release download -p "*" -D $DEST -R $REPO
-          echo -e "\nDownloaded to $DEST"
-          echo -e "\Calculating Hashes"
+          echo -e "Calculating Hashes"
           cd $DEST
           sha256sum * | tee binaries.sha
           echo -e "\nFiles in $DEST"
-          ls -Alht $DEST
+          ls -Alht
 
       - name: Show Artifacts
-        run: ls -Alh *
+        run: ls -Alht *
 
       - name: Generate Artifact Hash File
         run: |
@@ -211,7 +212,7 @@ jobs:
           path: ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
   Release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [Date, MakeISO]
     permissions:
       contents: write
@@ -229,7 +230,7 @@ jobs:
         run: ls -Alh ${{ vars.COLLECTOR }}-*.*
 
   Sharepoint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [Date, MakeISO]
     permissions:
       contents: write
