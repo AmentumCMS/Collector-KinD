@@ -67,7 +67,7 @@ jobs:
             ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz.sha
  
       - name: List files 
-        run: ls -Alh ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz*
+        run: ls -Alht ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.tgz*
 
       - name: Upload TARchive
         uses: actions/upload-artifact@v4
@@ -94,15 +94,9 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-
-      - name: Setup Git
-        run: |
-          git config user.name "$(git log -n 1 --pretty=format:%an)"
-          git config user.email "$(git log -n 1 --pretty=format:%ae)"
-
-      - name: Update Submodules if needed
-        shell: bash
-        run: git submodule update --init --recursive --remote
+        with:
+          submodules: true
+          lfs: true
 
       - name: Bundle Repo1 code base for ${{ vars.COLLECTOR }}
         run: |
@@ -198,7 +192,7 @@ jobs:
           cat ${{ vars.COLLECTOR }}-${{ needs.Date.outputs.Date }}.iso.sha
 
       - name: Show ISO & Hash
-        run: ls -Alh *.iso*
+        run: ls -Alht *.iso*
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
@@ -229,7 +223,7 @@ jobs:
           merge-multiple: true
 
       - name: Show Artifacts
-        run: ls -Alh ${{ vars.COLLECTOR }}-*.*
+        run: ls -Alht ${{ vars.COLLECTOR }}-*.*
 
       - name: Set up git
         run: |
@@ -270,7 +264,7 @@ jobs:
           merge-multiple: true
 
       - name: Show Artifacts
-        run: ls -Alh ${{ vars.COLLECTOR }}-*.*
+        run: ls -Alht ${{ vars.COLLECTOR }}-*.*
 
       - name: Send Files to Sharepoint
         uses: amentumservices/sharepoint-file-upload-action@main
